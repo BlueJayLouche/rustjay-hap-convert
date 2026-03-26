@@ -16,12 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Checkout hap-rs (sibling dependency)
-        uses: actions/checkout@v4
-        with:
-          repository: BlueJayLouche/hap-rs
-          path: ../hap-rs
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -67,12 +61,6 @@ jobs:
             binary: rustjay-hap-convert.exe
     steps:
       - uses: actions/checkout@v4
-
-      - name: Checkout hap-rs (sibling dependency)
-        uses: actions/checkout@v4
-        with:
-          repository: BlueJayLouche/hap-rs
-          path: ../hap-rs
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
