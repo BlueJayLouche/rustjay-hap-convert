@@ -1263,6 +1263,7 @@ dependencies = [
 [[package]]
 name = "hap-parser"
 version = "0.1.0"
+source = "git+https://github.com/BlueJayLouche/hap-rs#0727f00b53d32eb9f048bb1fc4d5ac718f017056"
 dependencies = [
  "byteorder",
  "snap",
@@ -1272,6 +1273,7 @@ dependencies = [
 [[package]]
 name = "hap-qt"
 version = "0.1.0"
+source = "git+https://github.com/BlueJayLouche/hap-rs#0727f00b53d32eb9f048bb1fc4d5ac718f017056"
 dependencies = [
  "byteorder",
  "hap-parser",
@@ -1284,6 +1286,7 @@ dependencies = [
 [[package]]
 name = "hap-wgpu"
 version = "0.1.0"
+source = "git+https://github.com/BlueJayLouche/hap-rs#0727f00b53d32eb9f048bb1fc4d5ac718f017056"
 dependencies = [
  "bytemuck",
  "hap-parser",
