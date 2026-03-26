@@ -13,7 +13,7 @@ Standalone batch video-to-HAP converter with a drag-and-drop GUI. Built with [eg
 
 ## Requirements
 
-- [FFmpeg](https://ffmpeg.org/) on your PATH (used to decode input videos)
+- **FFmpeg** — release downloads bundle ffmpeg and ffprobe. If building from source, install [FFmpeg](https://ffmpeg.org/) on your PATH.
 - GPU with BC texture compression support (optional, for accelerated encoding)
 
 ## Build

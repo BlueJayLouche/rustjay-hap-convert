@@ -1,7 +1,21 @@
 use crate::job::FileInfo;
 use anyhow::{Context, Result};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+
+/// Find ffprobe binary: check next to our executable first (bundled),
+/// then fall back to PATH.
+fn find_ffprobe() -> PathBuf {
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let bundled = dir.join(if cfg!(windows) { "ffprobe.exe" } else { "ffprobe" });
+            if bundled.exists() {
+                return bundled;
+            }
+        }
+    }
+    PathBuf::from("ffprobe")
+}
 
 /// Probe a video file for metadata. Tries native MP4 parsing first,
 /// falls back to ffprobe.
@@ -46,7 +60,7 @@ fn probe_native_mp4(path: &Path) -> Result<FileInfo> {
 
 /// Probe using ffprobe subprocess — handles any format ffmpeg supports.
 fn probe_ffprobe(path: &Path) -> Result<FileInfo> {
-    let output = Command::new("ffprobe")
+    let output = Command::new(find_ffprobe())
         .args([
             "-v", "quiet",
             "-print_format", "json",

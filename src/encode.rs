@@ -3,10 +3,24 @@ use anyhow::{Context, Result};
 use hap_qt::{CompressionMode, HapFrameEncoder, QtHapWriter, VideoConfig};
 use hap_wgpu::GpuDxtCompressor;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::sync::Arc;
+
+/// Find ffmpeg binary: check next to our executable first (bundled),
+/// then fall back to PATH.
+fn find_ffmpeg() -> PathBuf {
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let bundled = dir.join(if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" });
+            if bundled.exists() {
+                return bundled;
+            }
+        }
+    }
+    PathBuf::from("ffmpeg")
+}
 
 /// Progress updates sent from the encoder thread to the UI.
 #[derive(Debug, Clone)]
@@ -111,7 +125,7 @@ pub fn encode_file(
         QtHapWriter::create(output, video_config).context("failed to create output file")?;
 
     // Spawn ffmpeg to decode input to raw RGBA frames on stdout
-    let mut ffmpeg = Command::new("ffmpeg")
+    let mut ffmpeg = Command::new(find_ffmpeg())
         .args([
             "-y",
             "-i",
