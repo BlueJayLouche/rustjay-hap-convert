@@ -47,12 +47,24 @@ jobs:
     name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
+          # macOS
           - os: macos-latest
             target: aarch64-apple-darwin
+            binary: rustjay-hap-convert
           - os: macos-13
             target: x86_64-apple-darwin
+            binary: rustjay-hap-convert
+          # Linux
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary: rustjay-hap-convert
+          # Windows
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary: rustjay-hap-convert.exe
     steps:
       - uses: actions/checkout@v4
 
@@ -61,6 +73,13 @@ jobs:
         with:
           repository: BlueJayLouche/hap-rs
           path: ../hap-rs
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev \
+            libxcb-xfixes0-dev libxkbcommon-dev libwayland-dev
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -84,4 +103,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rustjay-hap-convert-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/rustjay-hap-convert
+          path: target/${{ matrix.target }}/release/${{ matrix.binary }}
