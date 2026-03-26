@@ -1,0 +1,46 @@
+[package]
+name = "rustjay-hap-convert"
+version = "0.1.0"
+edition = "2021"
+authors = ["BlueJayLouche <bluejaylouche@gmail.com>"]
+description = "Standalone batch video-to-HAP converter with drag-and-drop GUI"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/BlueJayLouche/rustjay-hap-convert"
+
+[dependencies]
+# GUI
+eframe = { version = "0.31", default-features = false, features = ["default_fonts", "wgpu"] }
+egui = "0.31"
+
+# HAP encoding (local workspace crates)
+hap-wgpu = { path = "../hap-rs/hap-wgpu" }
+hap-qt = { path = "../hap-rs/hap-qt" }
+
+# GPU
+wgpu = "25.0"
+bytemuck = { version = "1.14", features = ["derive"] }
+
+# Parallelism
+rayon = "1.10"
+
+# Utilities
+anyhow = "1.0"
+thiserror = "1.0"
+log = "0.4"
+env_logger = "0.11"
+uuid = { version = "1.7", features = ["v4"] }
+rfd = "0.15"
+pollster = "0.4"
+serde_json = "1.0"
+
+# Native video decoding
+mp4 = "0.14"
+openh264 = "0.6"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[profile.dev]
+opt-level = 1
