@@ -25,7 +25,7 @@ jobs:
             target: aarch64-apple-darwin
             asset: rustjay-hap-convert-macos-arm64
             binary: rustjay-hap-convert
-          - os: macos-13
+          - os: macos-latest
             target: x86_64-apple-darwin
             asset: rustjay-hap-convert-macos-x86_64
             binary: rustjay-hap-convert
