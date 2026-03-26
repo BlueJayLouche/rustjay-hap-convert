@@ -21,8 +21,10 @@ jobs:
         include:
           - target: aarch64-apple-darwin
             asset: rustjay-hap-convert-macos-arm64
+            ffmpeg_arch: arm
           - target: x86_64-apple-darwin
             asset: rustjay-hap-convert-macos-x86_64
+            ffmpeg_arch: intel
     steps:
       - uses: actions/checkout@v4
 
@@ -44,15 +46,17 @@ jobs:
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Download ffmpeg (static)
+      - name: Download ffmpeg (static, native arch)
         run: |
-          # Use evermeet.cx static builds — self-contained, no dylib deps
-          curl -L -o ffmpeg.zip "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip"
-          curl -L -o ffprobe.zip "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip"
+          # osxexperts.net provides static builds for both arm64 and x86_64
+          curl -L -o ffmpeg.zip "https://www.osxexperts.net/ffmpeg71${{ matrix.ffmpeg_arch }}.zip"
+          curl -L -o ffprobe.zip "https://www.osxexperts.net/ffprobe71${{ matrix.ffmpeg_arch }}.zip"
           unzip -o ffmpeg.zip
           unzip -o ffprobe.zip
+          # Clean up macOS resource fork junk
+          rm -rf __MACOSX
           chmod +x ffmpeg ffprobe
-          # Verify they're self-contained
+          file ffmpeg
           ./ffmpeg -version | head -1
 
       - name: Create .app bundle
@@ -65,6 +69,10 @@ jobs:
           chmod +x "$APP/Contents/MacOS/"*
           sed "s/VERSION/$VERSION/g" macos/Info.plist > "$APP/Contents/Info.plist"
           cp macos/AppIcon.icns "$APP/Contents/Resources/"
+
+      - name: Ad-hoc code sign
+        run: |
+          codesign --force --deep -s - "Rustjay Hap Converter.app"
 
       - name: Create .dmg
         run: |
