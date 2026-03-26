@@ -187,7 +187,7 @@ pub fn encode_file(
         frame_idx += 1;
 
         // Send progress every 5 frames to avoid channel congestion
-        if frame_idx % 5 == 0 || frame_idx == total_frames {
+        if frame_idx.is_multiple_of(5) || frame_idx == total_frames {
             let _ = progress_tx.send(EncodeProgress::Encoding {
                 frame: frame_idx,
                 total: total_frames,

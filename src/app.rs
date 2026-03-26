@@ -1,7 +1,7 @@
 use crate::encode::{self, EncodeProgress, GpuResources};
 use crate::job::{ConvertJob, GpuMode, HapCodec, JobQueue, JobStatus};
 use crate::probe;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{mpsc, Arc};
 
 /// Main application state.
@@ -309,10 +309,10 @@ impl eframe::App for HapConvertApp {
                                             egui::Layout::right_to_left(egui::Align::Center),
                                             |ui| {
                                                 // Remove button (only if not encoding this one)
-                                                if !matches!(job.status, JobStatus::Encoding { .. }) {
-                                                    if ui.small_button("x").clicked() {
-                                                        remove_idx = Some(i);
-                                                    }
+                                                if !matches!(job.status, JobStatus::Encoding { .. })
+                                                    && ui.small_button("x").clicked()
+                                                {
+                                                    remove_idx = Some(i);
                                                 }
 
                                                 match &job.status {
@@ -437,7 +437,7 @@ impl eframe::App for HapConvertApp {
     }
 }
 
-fn is_video_file(path: &PathBuf) -> bool {
+fn is_video_file(path: &Path) -> bool {
     match path.extension().and_then(|e| e.to_str()) {
         Some(ext) => matches!(
             ext.to_lowercase().as_str(),

@@ -62,7 +62,7 @@ impl HapCodec {
     }
 
     /// Convert to hap-qt HapFormat.
-    pub fn to_hap_format(&self) -> hap_qt::HapFormat {
+    pub fn to_hap_format(self) -> hap_qt::HapFormat {
         match self {
             HapCodec::Hap1 => hap_qt::HapFormat::Hap1,
             HapCodec::Hap5 => hap_qt::HapFormat::Hap5,
