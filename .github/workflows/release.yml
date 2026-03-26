@@ -10,44 +10,21 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  FFMPEG_VERSION: "7.1"
 
 jobs:
-  build:
-    name: Build (${{ matrix.target }})
-    runs-on: ${{ matrix.os }}
+  build-macos:
+    name: Build macOS (${{ matrix.target }})
+    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          # macOS
-          - os: macos-latest
-            target: aarch64-apple-darwin
+          - target: aarch64-apple-darwin
             asset: rustjay-hap-convert-macos-arm64
-            binary: rustjay-hap-convert
-          - os: macos-latest
-            target: x86_64-apple-darwin
+          - target: x86_64-apple-darwin
             asset: rustjay-hap-convert-macos-x86_64
-            binary: rustjay-hap-convert
-          # Linux
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            asset: rustjay-hap-convert-linux-x86_64
-            binary: rustjay-hap-convert
-          # Windows
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            asset: rustjay-hap-convert-windows-x86_64
-            binary: rustjay-hap-convert.exe
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev \
-            libxcb-xfixes0-dev libxkbcommon-dev libwayland-dev
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -61,30 +38,113 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-${{ matrix.target }}-release-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-${{ matrix.target }}-release-
+          key: macos-${{ matrix.target }}-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: macos-${{ matrix.target }}-release-
 
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
-      # --- Bundle ffmpeg ---
-
-      - name: Download ffmpeg (macOS)
-        if: runner.os == 'macOS'
+      - name: Download ffmpeg
         run: |
           brew install ffmpeg
           cp "$(which ffmpeg)" ffmpeg
           cp "$(which ffprobe)" ffprobe
 
-      - name: Download ffmpeg (Linux)
-        if: runner.os == 'Linux'
+      - name: Create .app bundle
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          APP="rustjay-hap-convert.app"
+          mkdir -p "$APP/Contents/MacOS"
+          cp target/${{ matrix.target }}/release/rustjay-hap-convert "$APP/Contents/MacOS/"
+          cp ffmpeg ffprobe "$APP/Contents/MacOS/"
+          chmod +x "$APP/Contents/MacOS/"*
+          sed "s/VERSION/$VERSION/g" macos/Info.plist > "$APP/Contents/Info.plist"
+
+      - name: Create .dmg
+        run: |
+          hdiutil create -volname "rustjay-hap-convert" \
+            -srcfolder rustjay-hap-convert.app \
+            -ov -format UDZO \
+            ${{ matrix.asset }}.dmg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}.dmg
+
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev \
+            libxcb-xfixes0-dev libxkbcommon-dev libwayland-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry & build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: linux-x86_64-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: linux-x86_64-release-
+
+      - name: Build release binary
+        run: cargo build --release --target x86_64-unknown-linux-gnu
+
+      - name: Download ffmpeg
         run: |
           curl -L -o ffmpeg-release.tar.xz \
             "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
           tar xf ffmpeg-release.tar.xz --wildcards '*/ffmpeg' '*/ffprobe' --strip-components=1
 
-      - name: Download ffmpeg (Windows)
-        if: runner.os == 'Windows'
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp target/x86_64-unknown-linux-gnu/release/rustjay-hap-convert dist/
+          cp ffmpeg ffprobe dist/
+          chmod +x dist/*
+          cd dist
+          tar czf ../rustjay-hap-convert-linux-x86_64.tar.gz *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustjay-hap-convert-linux-x86_64
+          path: rustjay-hap-convert-linux-x86_64.tar.gz
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry & build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: windows-x86_64-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: windows-x86_64-release-
+
+      - name: Build release binary
+        run: cargo build --release --target x86_64-pc-windows-msvc
+
+      - name: Download ffmpeg
         run: |
           curl -L -o ffmpeg.zip `
             "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
@@ -93,40 +153,25 @@ jobs:
           Copy-Item ffmpeg-extract/ffmpeg-master-latest-win64-gpl/bin/ffprobe.exe .
         shell: pwsh
 
-      # --- Package ---
-
-      - name: Package (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          mkdir -p dist
-          cp target/${{ matrix.target }}/release/${{ matrix.binary }} dist/
-          cp ffmpeg ffprobe dist/
-          chmod +x dist/ffmpeg dist/ffprobe
-          cd dist
-          tar czf ../${{ matrix.asset }}.tar.gz *
-
-      - name: Package (Windows)
-        if: runner.os == 'Windows'
+      - name: Package
         run: |
           mkdir dist
-          copy target\${{ matrix.target }}\release\${{ matrix.binary }} dist\
+          copy target\x86_64-pc-windows-msvc\release\rustjay-hap-convert.exe dist\
           copy ffmpeg.exe dist\
           copy ffprobe.exe dist\
           cd dist
-          Compress-Archive -Path * -DestinationPath ..\${{ matrix.asset }}.zip
+          Compress-Archive -Path * -DestinationPath ..\rustjay-hap-convert-windows-x86_64.zip
         shell: pwsh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.asset }}
-          path: |
-            ${{ matrix.asset }}.tar.gz
-            ${{ matrix.asset }}.zip
+          name: rustjay-hap-convert-windows-x86_64
+          path: rustjay-hap-convert-windows-x86_64.zip
 
   release:
     name: Create Release
-    needs: build
+    needs: [build-macos, build-linux, build-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -141,5 +186,6 @@ jobs:
         with:
           generate_release_notes: true
           files: |
+            artifacts/**/*.dmg
             artifacts/**/*.tar.gz
             artifacts/**/*.zip
