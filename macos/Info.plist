@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>rustjay-hap-convert</string>
+    <string>Rustjay Hap Converter</string>
     <key>CFBundleDisplayName</key>
-    <string>rustjay-hap-convert</string>
+    <string>Rustjay Hap Converter</string>
     <key>CFBundleIdentifier</key>
     <string>com.bluejaylouche.rustjay-hap-convert</string>
     <key>CFBundleVersion</key>
@@ -14,6 +14,8 @@
     <string>VERSION</string>
     <key>CFBundleExecutable</key>
     <string>rustjay-hap-convert</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleInfoDictionaryVersion</key>

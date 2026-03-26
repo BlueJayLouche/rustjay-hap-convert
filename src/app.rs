@@ -197,7 +197,7 @@ impl eframe::App for HapConvertApp {
 
         // Main panel
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("rustjay-hap-convert");
+            ui.heading("Rustjay Hap Converter");
             ui.add_space(4.0);
 
             // --- Settings row ---

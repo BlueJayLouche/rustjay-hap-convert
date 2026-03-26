@@ -15,7 +15,7 @@ fn main() -> eframe::Result<()> {
     };
 
     eframe::run_native(
-        "rustjay-hap-convert",
+        "Rustjay Hap Converter",
         options,
         Box::new(|cc| Ok(Box::new(app::HapConvertApp::new(cc)))),
     )
