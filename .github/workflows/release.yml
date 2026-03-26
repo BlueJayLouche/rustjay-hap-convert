@@ -44,11 +44,16 @@ jobs:
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Download ffmpeg
+      - name: Download ffmpeg (static)
         run: |
-          brew install ffmpeg
-          cp "$(which ffmpeg)" ffmpeg
-          cp "$(which ffprobe)" ffprobe
+          # Use evermeet.cx static builds — self-contained, no dylib deps
+          curl -L -o ffmpeg.zip "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip"
+          curl -L -o ffprobe.zip "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip"
+          unzip -o ffmpeg.zip
+          unzip -o ffprobe.zip
+          chmod +x ffmpeg ffprobe
+          # Verify they're self-contained
+          ./ffmpeg -version | head -1
 
       - name: Create .app bundle
         run: |

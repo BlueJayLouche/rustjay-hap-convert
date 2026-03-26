@@ -20,7 +20,25 @@ fn find_ffprobe() -> PathBuf {
 /// Probe a video file for metadata. Tries native MP4 parsing first,
 /// falls back to ffprobe.
 pub fn probe_video(path: &Path) -> Result<FileInfo> {
-    probe_native_mp4(path).or_else(|_| probe_ffprobe(path))
+    match probe_native_mp4(path) {
+        Ok(info) => {
+            log::info!("Probed {} natively: {}x{} {:.1}fps", path.display(), info.width, info.height, info.fps);
+            return Ok(info);
+        }
+        Err(e) => {
+            log::debug!("Native MP4 probe failed for {}: {e:#}", path.display());
+        }
+    }
+    match probe_ffprobe(path) {
+        Ok(info) => {
+            log::info!("Probed {} via ffprobe: {}x{} {:.1}fps", path.display(), info.width, info.height, info.fps);
+            Ok(info)
+        }
+        Err(e) => {
+            log::warn!("All probes failed for {}: {e:#}", path.display());
+            Err(e)
+        }
+    }
 }
 
 /// Native MP4 probe using the `mp4` crate — no ffmpeg needed for H.264/MP4.
