@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use uuid::Uuid;
 
 /// All supported HAP codec variants for output.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -12,8 +11,6 @@ pub enum HapCodec {
     HapY,
     /// BC7 — highest quality RGBA
     Hap7,
-    /// BC6H — HDR colour
-    HapH,
     /// BC4 — alpha channel only
     HapA,
 }
@@ -24,7 +21,6 @@ impl HapCodec {
         HapCodec::Hap5,
         HapCodec::HapY,
         HapCodec::Hap7,
-        HapCodec::HapH,
         HapCodec::HapA,
     ];
 
@@ -34,7 +30,6 @@ impl HapCodec {
             HapCodec::Hap5 => "HAP Alpha (DXT5)",
             HapCodec::HapY => "HAP Q (YCoCg)",
             HapCodec::Hap7 => "HAP Q (BC7)",
-            HapCodec::HapH => "HAP HDR (BC6H)",
             HapCodec::HapA => "HAP Alpha-Only (BC4)",
         }
     }
@@ -45,7 +40,6 @@ impl HapCodec {
             HapCodec::Hap5 => "HAP5",
             HapCodec::HapY => "HAPY",
             HapCodec::Hap7 => "HAP7",
-            HapCodec::HapH => "HAPH",
             HapCodec::HapA => "HAPA",
         }
     }
@@ -56,7 +50,6 @@ impl HapCodec {
             HapCodec::Hap5 => "_hap5",
             HapCodec::HapY => "_hapq",
             HapCodec::Hap7 => "_hap7",
-            HapCodec::HapH => "_haph",
             HapCodec::HapA => "_hapa",
         }
     }
@@ -68,7 +61,6 @@ impl HapCodec {
             HapCodec::Hap5 => hap_qt::HapFormat::Hap5,
             HapCodec::HapY => hap_qt::HapFormat::HapY,
             HapCodec::Hap7 => hap_qt::HapFormat::Hap7,
-            HapCodec::HapH => hap_qt::HapFormat::HapH,
             HapCodec::HapA => hap_qt::HapFormat::HapA,
         }
     }
@@ -100,7 +92,6 @@ pub struct FileInfo {
     pub fps: f32,
     pub frame_count: u32,
     pub duration_secs: f32,
-    pub codec_name: String,
 }
 
 impl FileInfo {
@@ -119,7 +110,6 @@ impl FileInfo {
 #[derive(Debug, Clone)]
 pub enum JobStatus {
     Queued,
-    Probing,
     Encoding { frame: u32, total: u32 },
     Complete { duration_secs: f32, output_size: u64 },
     Failed(String),
@@ -129,37 +119,11 @@ impl JobStatus {
     pub fn is_finished(&self) -> bool {
         matches!(self, JobStatus::Complete { .. } | JobStatus::Failed(_))
     }
-
-    pub fn progress(&self) -> f32 {
-        match self {
-            JobStatus::Queued | JobStatus::Probing => 0.0,
-            JobStatus::Encoding { frame, total } => {
-                if *total == 0 {
-                    0.0
-                } else {
-                    *frame as f32 / *total as f32
-                }
-            }
-            JobStatus::Complete { .. } => 1.0,
-            JobStatus::Failed(_) => 0.0,
-        }
-    }
-
-    pub fn label(&self) -> String {
-        match self {
-            JobStatus::Queued => "Queued".into(),
-            JobStatus::Probing => "Probing...".into(),
-            JobStatus::Encoding { frame, total } => format!("{frame}/{total}"),
-            JobStatus::Complete { duration_secs, .. } => format!("Done ({duration_secs:.1}s)"),
-            JobStatus::Failed(e) => format!("Error: {e}"),
-        }
-    }
 }
 
 /// A single file conversion job.
 #[derive(Debug, Clone)]
 pub struct ConvertJob {
-    pub id: Uuid,
     pub input_path: PathBuf,
     pub output_path: PathBuf,
     pub codec: HapCodec,
@@ -179,7 +143,6 @@ impl ConvertJob {
             None => input_path.parent().unwrap_or(std::path::Path::new(".")).join(&out_name),
         };
         Self {
-            id: Uuid::new_v4(),
             input_path,
             output_path,
             codec,
@@ -221,10 +184,6 @@ impl JobQueue {
 
     pub fn next_queued(&self) -> Option<usize> {
         self.jobs.iter().position(|j| matches!(j.status, JobStatus::Queued))
-    }
-
-    pub fn all_finished(&self) -> bool {
-        self.jobs.iter().all(|j| j.status.is_finished())
     }
 
     pub fn count_complete(&self) -> usize {

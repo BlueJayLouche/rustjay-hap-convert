@@ -6,14 +6,13 @@ use std::process::Command;
 /// Find ffprobe binary: check next to our executable first (bundled),
 /// then fall back to PATH.
 fn find_ffprobe() -> PathBuf {
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(dir) = exe.parent() {
             let bundled = dir.join(if cfg!(windows) { "ffprobe.exe" } else { "ffprobe" });
             if bundled.exists() {
                 return bundled;
             }
         }
-    }
     PathBuf::from("ffprobe")
 }
 
@@ -64,15 +63,12 @@ fn probe_native_mp4(path: &Path) -> Result<FileInfo> {
         30.0
     };
 
-    let codec_name = format!("{:?}", track.media_type().unwrap_or(mp4::MediaType::H264));
-
     Ok(FileInfo {
         width: width as u32,
         height: height as u32,
         fps,
         frame_count,
         duration_secs,
-        codec_name,
     })
 }
 
@@ -107,10 +103,6 @@ fn probe_ffprobe(path: &Path) -> Result<FileInfo> {
 
     let width = stream["width"].as_u64().unwrap_or(0) as u32;
     let height = stream["height"].as_u64().unwrap_or(0) as u32;
-    let codec_name = stream["codec_name"]
-        .as_str()
-        .unwrap_or("unknown")
-        .to_string();
 
     // Parse frame rate from r_frame_rate "30/1" or "30000/1001"
     let fps = parse_fps(stream["r_frame_rate"].as_str().unwrap_or("30/1"));
@@ -133,7 +125,6 @@ fn probe_ffprobe(path: &Path) -> Result<FileInfo> {
         fps,
         frame_count,
         duration_secs,
-        codec_name,
     })
 }
 
