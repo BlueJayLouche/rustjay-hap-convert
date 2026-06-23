@@ -11,21 +11,19 @@ use std::sync::Arc;
 /// Find ffmpeg binary: check next to our executable first (bundled),
 /// then fall back to PATH.
 fn find_ffmpeg() -> PathBuf {
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(dir) = exe.parent() {
             let bundled = dir.join(if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" });
             if bundled.exists() {
                 return bundled;
             }
         }
-    }
     PathBuf::from("ffmpeg")
 }
 
 /// Progress updates sent from the encoder thread to the UI.
 #[derive(Debug, Clone)]
 pub enum EncodeProgress {
-    Probing,
     Encoding { frame: u32, total: u32 },
     Complete { duration_secs: f32, output_size: u64 },
     Failed(String),
@@ -40,7 +38,7 @@ pub struct GpuResources {
 impl GpuResources {
     /// Create headless wgpu device for encoding (no window surface needed).
     pub fn try_new() -> Option<Self> {
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,
             compatible_surface: None,

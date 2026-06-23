@@ -162,7 +162,6 @@ impl HapConvertApp {
                     self.start_next_job();
                     return;
                 }
-                EncodeProgress::Probing => {}
             }
         }
     }
@@ -174,7 +173,9 @@ impl HapConvertApp {
 }
 
 impl eframe::App for HapConvertApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = ui.ctx().clone();
+
         // Poll encoder progress
         self.poll_progress();
 
@@ -196,7 +197,7 @@ impl eframe::App for HapConvertApp {
         }
 
         // Main panel
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             ui.heading("Rustjay Hap Converter");
             ui.add_space(4.0);
 
@@ -234,11 +235,10 @@ impl eframe::App for HapConvertApp {
                 } else {
                     ui.label("Same as input");
                 }
-                if ui.button("Browse...").clicked() {
-                    if let Some(dir) = rfd::FileDialog::new().pick_folder() {
+                if ui.button("Browse...").clicked()
+                    && let Some(dir) = rfd::FileDialog::new().pick_folder() {
                         self.output_dir = Some(dir);
                     }
-                }
                 if self.output_dir.is_some() && ui.button("Reset").clicked() {
                     self.output_dir = None;
                 }
@@ -318,10 +318,6 @@ impl eframe::App for HapConvertApp {
                                                 match &job.status {
                                                     JobStatus::Queued => {
                                                         ui.label("Queued");
-                                                    }
-                                                    JobStatus::Probing => {
-                                                        ui.spinner();
-                                                        ui.label("Probing...");
                                                     }
                                                     JobStatus::Encoding { frame, total } => {
                                                         let pct = if *total > 0 {
