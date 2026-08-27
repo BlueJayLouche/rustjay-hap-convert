@@ -9,15 +9,15 @@ repository = "https://github.com/BlueJayLouche/rustjay-hap-convert"
 
 [dependencies]
 # GUI
-eframe = { version = "0.34", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }
-egui = "0.34"
+eframe = { version = "0.36", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }
+egui = "0.36"
 
-# HAP encoding (https://github.com/BlueJayLouche/hap-rs)
-hap-wgpu = "0.2.0"
-hap-qt = "0.2.0"
+# HAP encoding (local checkout until a wgpu-30 release is published)
+hap-wgpu = { path = "../hap-rs/hap-wgpu" }
+hap-qt = { path = "../hap-rs/hap-qt" }
 
 # GPU
-wgpu = "29.0"
+wgpu = "30.0"
 bytemuck = { version = "1.14", features = ["derive"] }
 
 # Parallelism
@@ -27,13 +27,13 @@ rayon = "1.10"
 anyhow = "1.0"
 log = "0.4"
 env_logger = "0.11"
-rfd = "0.15"
-pollster = "0.4"
+rfd = "0.17"
+pollster = "1.0"
 serde_json = "1.0"
 
 # Native video decoding
 mp4 = "0.14"
-openh264 = "0.6"
+openh264 = "0.9"
 
 [profile.release]
 opt-level = 3

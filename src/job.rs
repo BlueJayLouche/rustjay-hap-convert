@@ -9,7 +9,7 @@ pub enum HapCodec {
     Hap5,
     /// DXT5-YCoCg — high-quality colour, no alpha
     HapY,
-    /// BC7 — highest quality RGBA
+    /// BC7 — highest quality RGBA (Hap R)
     Hap7,
     /// BC4 — alpha channel only
     HapA,
@@ -29,7 +29,7 @@ impl HapCodec {
             HapCodec::Hap1 => "HAP (DXT1)",
             HapCodec::Hap5 => "HAP Alpha (DXT5)",
             HapCodec::HapY => "HAP Q (YCoCg)",
-            HapCodec::Hap7 => "HAP Q (BC7)",
+            HapCodec::Hap7 => "HAP R (BC7)",
             HapCodec::HapA => "HAP Alpha-Only (BC4)",
         }
     }
@@ -39,7 +39,7 @@ impl HapCodec {
             HapCodec::Hap1 => "HAP1",
             HapCodec::Hap5 => "HAP5",
             HapCodec::HapY => "HAPY",
-            HapCodec::Hap7 => "HAP7",
+            HapCodec::Hap7 => "HAPR",
             HapCodec::HapA => "HAPA",
         }
     }
@@ -49,7 +49,7 @@ impl HapCodec {
             HapCodec::Hap1 => "_hap1",
             HapCodec::Hap5 => "_hap5",
             HapCodec::HapY => "_hapq",
-            HapCodec::Hap7 => "_hap7",
+            HapCodec::Hap7 => "_hapr",
             HapCodec::HapA => "_hapa",
         }
     }
@@ -62,6 +62,41 @@ impl HapCodec {
             HapCodec::HapY => hap_qt::HapFormat::HapY,
             HapCodec::Hap7 => hap_qt::HapFormat::Hap7,
             HapCodec::HapA => hap_qt::HapFormat::HapA,
+        }
+    }
+}
+
+/// Encoding quality preset.
+///
+/// Applies to every codec on both the GPU and CPU paths: it sets the number of
+/// endpoint-refinement rounds in the compute shaders, the texpresso algorithm
+/// for CPU DXT, and the BC7 refit count for Hap R.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Quality {
+    /// Bounding-box / range fit only. Fastest.
+    Fast,
+    #[default]
+    Balanced,
+    /// Most refinement rounds. Still far faster than CPU on the GPU path.
+    Best,
+}
+
+impl Quality {
+    pub const ALL: &[Quality] = &[Quality::Fast, Quality::Balanced, Quality::Best];
+
+    pub fn label(&self) -> &'static str {
+        match self {
+            Quality::Fast => "Fast",
+            Quality::Balanced => "Balanced",
+            Quality::Best => "Best",
+        }
+    }
+
+    pub fn to_dxt_quality(self) -> hap_qt::DxtQuality {
+        match self {
+            Quality::Fast => hap_qt::DxtQuality::Fast,
+            Quality::Balanced => hap_qt::DxtQuality::Balanced,
+            Quality::Best => hap_qt::DxtQuality::Best,
         }
     }
 }

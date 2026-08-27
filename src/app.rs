@@ -1,5 +1,5 @@
 use crate::encode::{self, EncodeProgress, GpuResources};
-use crate::job::{ConvertJob, GpuMode, HapCodec, JobQueue, JobStatus};
+use crate::job::{ConvertJob, GpuMode, HapCodec, JobQueue, JobStatus, Quality};
 use crate::probe;
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc, Arc};
@@ -12,6 +12,8 @@ pub struct HapConvertApp {
     codec: HapCodec,
     /// GPU/CPU preference.
     gpu_mode: GpuMode,
+    /// Global quality preset.
+    quality: Quality,
     /// Custom output directory (None = same as input).
     output_dir: Option<PathBuf>,
     /// Shared GPU resources.
@@ -32,6 +34,7 @@ impl HapConvertApp {
             queue: JobQueue::new(),
             codec: HapCodec::Hap1,
             gpu_mode: GpuMode::Auto,
+            quality: Quality::default(),
             output_dir: None,
             gpu: None,
             encoding_active: false,
@@ -111,6 +114,7 @@ impl HapConvertApp {
                 job.output_path.clone(),
                 info,
                 job.codec,
+                self.quality,
                 self.gpu_mode,
                 self.gpu.clone(),
             );
@@ -189,7 +193,7 @@ impl eframe::App for HapConvertApp {
             .input(|i| {
                 i.raw.dropped_files
                     .iter()
-                    .filter_map(|f| f.path.clone())
+                    .map(|f| f.path().to_path_buf())
                     .collect()
             });
         if !dropped.is_empty() {
@@ -197,7 +201,7 @@ impl eframe::App for HapConvertApp {
         }
 
         // Main panel
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             ui.heading("Rustjay Hap Converter");
             ui.add_space(4.0);
 
@@ -209,6 +213,17 @@ impl eframe::App for HapConvertApp {
                     .show_ui(ui, |ui| {
                         for c in HapCodec::ALL {
                             ui.selectable_value(&mut self.codec, *c, c.label());
+                        }
+                    });
+
+                ui.separator();
+
+                ui.label("Quality:");
+                egui::ComboBox::from_id_salt("quality_select")
+                    .selected_text(self.quality.label())
+                    .show_ui(ui, |ui| {
+                        for q in Quality::ALL {
+                            ui.selectable_value(&mut self.quality, *q, q.label());
                         }
                     });
 

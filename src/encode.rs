@@ -1,4 +1,4 @@
-use crate::job::{FileInfo, GpuMode, HapCodec};
+use crate::job::{FileInfo, GpuMode, HapCodec, Quality};
 use anyhow::{Context, Result};
 use hap_qt::{CompressionMode, HapFrameEncoder, QtHapWriter, VideoConfig};
 use hap_wgpu::GpuDxtCompressor;
@@ -43,6 +43,7 @@ impl GpuResources {
             power_preference: wgpu::PowerPreference::HighPerformance,
             compatible_surface: None,
             force_fallback_adapter: false,
+            ..Default::default()
         }))
         .ok()?;
 
@@ -77,6 +78,7 @@ pub fn encode_file(
     output: &Path,
     info: &FileInfo,
     codec: HapCodec,
+    quality: Quality,
     gpu_mode: GpuMode,
     gpu: Option<&GpuResources>,
     progress_tx: &mpsc::Sender<EncodeProgress>,
@@ -86,6 +88,7 @@ pub fn encode_file(
     let fps = info.fps;
     let total_frames = info.frame_count;
     let hap_format = codec.to_hap_format();
+    let dxt_quality = quality.to_dxt_quality();
 
     // Decide GPU vs CPU
     let use_gpu = match gpu_mode {
@@ -116,6 +119,7 @@ pub fn encode_file(
     let mut frame_encoder = HapFrameEncoder::new(hap_format, width, height)
         .context("failed to create HAP frame encoder")?;
     frame_encoder.set_compression(CompressionMode::Snappy);
+    frame_encoder.set_quality(dxt_quality);
 
     // Create QuickTime writer
     let video_config = VideoConfig::new(width, height, fps, hap_format);
@@ -166,7 +170,7 @@ pub fn encode_file(
                 frame_buf.clone()
             };
             let dxt_data = gpu_comp
-                .compress(&input_data, hap_format)
+                .compress(&input_data, hap_format, dxt_quality)
                 .context("GPU DXT compression failed")?;
             frame_encoder
                 .encode_from_dxt(&dxt_data)
@@ -209,6 +213,7 @@ pub fn spawn_encode(
     output: std::path::PathBuf,
     info: FileInfo,
     codec: HapCodec,
+    quality: Quality,
     gpu_mode: GpuMode,
     gpu: Option<Arc<GpuResources>>,
 ) -> mpsc::Receiver<EncodeProgress> {
@@ -222,6 +227,7 @@ pub fn spawn_encode(
             &output,
             &info,
             codec,
+            quality,
             gpu_mode,
             gpu.as_deref(),
             &tx,
