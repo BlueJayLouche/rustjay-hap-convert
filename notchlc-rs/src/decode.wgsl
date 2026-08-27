@@ -1,4 +1,8 @@
-// NotchLC block decode. One invocation per 4x4 luma block: it decodes its own
+// NotchLC block decode, LGPL-2.1-or-later: the block layout and arithmetic
+// here follow FFmpeg's libavcodec/notchlc.c (Copyright (c) 2020 Paul B Mahol),
+// restructured for parallel execution. See COPYING.LESSER.
+//
+// One invocation per 4x4 luma block: it decodes its own
 // 16 luma samples, works out the chroma and alpha covering those pixels, and
 // writes 16 RGBA texels.
 //

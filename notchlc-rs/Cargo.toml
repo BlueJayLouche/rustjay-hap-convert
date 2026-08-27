@@ -2,8 +2,8 @@
 name = "notchlc-rs"
 version = "0.1.0"
 edition = "2024"
-description = "Clean-room NotchLC encoder (spike)"
-license = "MIT OR Apache-2.0"
+description = "NotchLC encoder and GPU decoder"
+license = "LGPL-2.1-or-later"
 
 [dependencies]
 # QuickTime demux; the reader is codec-agnostic, gated on the "nclc" fourcc.

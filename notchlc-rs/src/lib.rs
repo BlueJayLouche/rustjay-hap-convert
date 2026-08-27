@@ -1,7 +1,15 @@
-//! Clean-room NotchLC frame encoder (spike: quality-A luma, coarse chroma, no
-//! compression wrapper).
+//! NotchLC encoder and decoder.
 //!
-//! Bitstream derived from FFmpeg's decoder (`libavcodec/notchlc.c`).
+//! Licensed LGPL-2.1-or-later, because the `decode` module is ported from FFmpeg's
+//! `libavcodec/notchlc.c` and `libavcodec/lzf.c` (LGPL-2.1+, (c) 2020 Paul B
+//! Mahol). See COPYING.LESSER.
+//!
+//! The encoder below, and the `clip` and `gpu` modules, are original work: the encoder was
+//! written from a bitstream description rather than ported. They carry the
+//! crate's licence by virtue of shipping alongside the decoder, not because
+//! they are derived from it.
+//!
+//! The encoder is a spike: quality-A luma, coarse chroma.
 //!
 //! Packet layout (what goes in a mov sample):
 //! ```text

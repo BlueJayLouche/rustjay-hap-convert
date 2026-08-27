@@ -1,8 +1,13 @@
 //! NotchLC frame decoder.
 //!
-//! Ported from FFmpeg's `libavcodec/notchlc.c` (LGPL-2.1+, © 2020 Paul B Mahol)
-//! and `libavcodec/lzf.c`. This module is the only LGPL-derived code in the
-//! crate — keep it that way, so relicensing later means rewriting one file.
+//! Ported from FFmpeg's `libavcodec/notchlc.c` (Copyright (c) 2020 Paul B
+//! Mahol) and `libavcodec/lzf.c`, both LGPL-2.1-or-later. That provenance is
+//! why this crate is LGPL rather than MIT/Apache.
+//!
+//! Along with `decode.wgsl`, this is the derived code in the crate. Keeping it
+//! confined to two files means a future clean-room rewrite — should the crate
+//! ever need to be MIT/Apache, to sit beside hap-wgpu on crates.io — is a
+//! rewrite of two files, not of the crate.
 //!
 //! Output is YUVA444P12 with an identity ("RGB") colorspace and full range, so
 //! the planes are GBR: `y` is G, `u` is B, `v` is R.
