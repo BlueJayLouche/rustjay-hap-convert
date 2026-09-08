@@ -1,5 +1,5 @@
 use crate::encode::{self, EncodeProgress, GpuResources};
-use crate::job::{ConvertJob, GpuMode, HapCodec, JobQueue, JobStatus};
+use crate::job::{ConvertJob, EncodeSettings, GpuMode, HapCodec, JobQueue, JobStatus, Quality, Scale};
 use crate::probe;
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc, Arc};
@@ -12,6 +12,9 @@ pub struct HapConvertApp {
     codec: HapCodec,
     /// GPU/CPU preference.
     gpu_mode: GpuMode,
+    /// Global quality preset.
+    quality: Quality,
+    scale: Scale,
     /// Custom output directory (None = same as input).
     output_dir: Option<PathBuf>,
     /// Shared GPU resources.
@@ -32,6 +35,8 @@ impl HapConvertApp {
             queue: JobQueue::new(),
             codec: HapCodec::Hap1,
             gpu_mode: GpuMode::Auto,
+            quality: Quality::default(),
+            scale: Scale::default(),
             output_dir: None,
             gpu: None,
             encoding_active: false,
@@ -110,8 +115,12 @@ impl HapConvertApp {
                 job.input_path.clone(),
                 job.output_path.clone(),
                 info,
-                job.codec,
-                self.gpu_mode,
+                EncodeSettings {
+                    codec: job.codec,
+                    quality: self.quality,
+                    scale: self.scale,
+                    gpu_mode: self.gpu_mode,
+                },
                 self.gpu.clone(),
             );
 
@@ -189,7 +198,7 @@ impl eframe::App for HapConvertApp {
             .input(|i| {
                 i.raw.dropped_files
                     .iter()
-                    .filter_map(|f| f.path.clone())
+                    .map(|f| f.path().to_path_buf())
                     .collect()
             });
         if !dropped.is_empty() {
@@ -197,7 +206,7 @@ impl eframe::App for HapConvertApp {
         }
 
         // Main panel
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             ui.heading("Rustjay Hap Converter");
             ui.add_space(4.0);
 
@@ -211,6 +220,33 @@ impl eframe::App for HapConvertApp {
                             ui.selectable_value(&mut self.codec, *c, c.label());
                         }
                     });
+
+                ui.separator();
+
+                ui.label("Quality:");
+                egui::ComboBox::from_id_salt("quality_select")
+                    .selected_text(self.quality.label())
+                    .show_ui(ui, |ui| {
+                        for q in Quality::ALL {
+                            ui.selectable_value(&mut self.quality, *q, q.label());
+                        }
+                    });
+
+                ui.separator();
+
+                ui.label("Size:");
+                egui::ComboBox::from_id_salt("scale_select")
+                    .selected_text(self.scale.label())
+                    .show_ui(ui, |ui| {
+                        for sc in Scale::ALL {
+                            ui.selectable_value(&mut self.scale, *sc, sc.label());
+                        }
+                    })
+                    .response
+                    .on_hover_text(
+                        "Playback cost is per pixel. A 4K clip on a 1080p output \
+                         decodes four times the bytes for no visible gain.",
+                    );
 
                 ui.separator();
 

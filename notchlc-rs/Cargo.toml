@@ -1,0 +1,32 @@
+[package]
+name = "notchlc-rs"
+version = "0.1.0"
+edition = "2024"
+description = "NotchLC encoder and GPU decoder"
+license = "LGPL-2.1-or-later"
+
+[dependencies]
+# QuickTime demux; the reader is codec-agnostic, gated on the "nclc" fourcc.
+hap-qt = { version = "0.3.1", optional = true }
+memmap2 = { version = "0.9", optional = true }
+
+# GPU decode. Optional so the encoder and CPU decoder stay dependency-light.
+wgpu = { version = "30.0", optional = true }
+bytemuck = { version = "1", optional = true }
+
+[features]
+default = ["clip"]
+# Opening a .mov directly. Hosts that already demux (anything on ffmpeg) can
+# turn this off and feed decompress_packet from their own packets.
+clip = ["dep:hap-qt", "dep:memmap2"]
+gpu = ["dep:wgpu", "dep:bytemuck"]
+
+[[example]]
+name = "clip_probe"
+required-features = ["clip"]
+
+[dev-dependencies]
+pollster = "1.0"
+
+[profile.release]
+opt-level = 3
