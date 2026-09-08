@@ -12,12 +12,12 @@ use std::time::{Duration, Instant};
 
 // ponytail: copied from encode.rs rather than promoting the crate to a lib for 8 lines.
 fn tool(name: &str) -> PathBuf {
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            let bundled = dir.join(if cfg!(windows) { format!("{name}.exe") } else { name.into() });
-            if bundled.exists() {
-                return bundled;
-            }
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(dir) = exe.parent()
+    {
+        let bundled = dir.join(if cfg!(windows) { format!("{name}.exe") } else { name.into() });
+        if bundled.exists() {
+            return bundled;
         }
     }
     PathBuf::from(name)
@@ -156,46 +156,45 @@ impl eframe::App for Player {
             self.next_frame_at = Instant::now();
         }
 
-        if self.playing {
-            if let Some(src) = self.source.as_mut() {
-                let period = Duration::from_secs_f32(1.0 / src.fps.max(1.0));
-                let now = Instant::now();
-                if now >= self.next_frame_at {
-                    match src.rx.try_recv() {
-                        Ok(rgba) => {
-                            let img = egui::ColorImage::from_rgba_unmultiplied([src.w, src.h], &rgba);
-                            match self.texture.as_mut() {
-                                Some(t) => t.set(img, egui::TextureOptions::LINEAR),
-                                None => {
-                                    self.texture =
-                                        Some(ctx.load_texture("frame", img, egui::TextureOptions::LINEAR))
-                                }
-                            }
-                            // Skip ahead instead of drifting if we fell behind.
-                            self.next_frame_at = (self.next_frame_at + period).max(now);
-                        }
-                        Err(TryRecvError::Disconnected) => {
-                            if let Err(e) = src.restart() {
-                                self.error = Some(e);
-                                self.playing = false;
+        if self.playing
+            && let Some(src) = self.source.as_mut()
+        {
+            let period = Duration::from_secs_f32(1.0 / src.fps.max(1.0));
+            let now = Instant::now();
+            if now >= self.next_frame_at {
+                match src.rx.try_recv() {
+                    Ok(rgba) => {
+                        let img = egui::ColorImage::from_rgba_unmultiplied([src.w, src.h], &rgba);
+                        match self.texture.as_mut() {
+                            Some(t) => t.set(img, egui::TextureOptions::LINEAR),
+                            None => {
+                                self.texture =
+                                    Some(ctx.load_texture("frame", img, egui::TextureOptions::LINEAR))
                             }
                         }
-                        Err(TryRecvError::Empty) => {} // decoder behind; try again next repaint
+                        // Skip ahead instead of drifting if we fell behind.
+                        self.next_frame_at = (self.next_frame_at + period).max(now);
                     }
+                    Err(TryRecvError::Disconnected) => {
+                        if let Err(e) = src.restart() {
+                            self.error = Some(e);
+                            self.playing = false;
+                        }
+                    }
+                    Err(TryRecvError::Empty) => {} // decoder behind; try again next repaint
                 }
-                ctx.request_repaint_after(self.next_frame_at.saturating_duration_since(Instant::now()));
             }
+            ctx.request_repaint_after(self.next_frame_at.saturating_duration_since(Instant::now()));
         }
 
         egui::Panel::bottom("bar").show(ui, |ui| {
             ui.horizontal(|ui| {
-                if ui.button("Open…").clicked() {
-                    if let Some(p) = rfd::FileDialog::new()
+                if ui.button("Open…").clicked()
+                    && let Some(p) = rfd::FileDialog::new()
                         .add_filter("Video", &["mov", "mp4", "avi", "mkv"])
                         .pick_file()
-                    {
-                        self.load(&p);
-                    }
+                {
+                    self.load(&p);
                 }
                 let label = if self.playing { "Pause" } else { "Play" };
                 if ui.button(label).clicked() {
