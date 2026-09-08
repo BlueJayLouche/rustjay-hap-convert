@@ -1,4 +1,4 @@
-use crate::job::{FileInfo, GpuMode, HapCodec, Quality};
+use crate::job::{EncodeSettings, GpuMode, FileInfo};
 use anyhow::{Context, Result};
 use hap_qt::{CompressionMode, HapFrameEncoder, QtHapWriter, VideoConfig};
 use hap_wgpu::GpuDxtCompressor;
@@ -77,14 +77,28 @@ pub fn encode_file(
     input: &Path,
     output: &Path,
     info: &FileInfo,
-    codec: HapCodec,
-    quality: Quality,
-    gpu_mode: GpuMode,
+    settings: EncodeSettings,
     gpu: Option<&GpuResources>,
     progress_tx: &mpsc::Sender<EncodeProgress>,
 ) -> Result<()> {
-    let width = info.width;
-    let height = info.height;
+    let EncodeSettings {
+        codec,
+        quality,
+        scale,
+        gpu_mode,
+    } = settings;
+    // Everything downstream — the encoder, the writer, the frame buffer — works
+    // in output pixels. ffmpeg does the resampling.
+    let (width, height) = scale.apply(info.width, info.height);
+    if (width, height) != (info.width, info.height) {
+        log::info!(
+            "scaling {}x{} to {}x{}",
+            info.width,
+            info.height,
+            width,
+            height
+        );
+    }
     let fps = info.fps;
     let total_frames = info.frame_count;
     let hap_format = codec.to_hap_format();
@@ -127,12 +141,15 @@ pub fn encode_file(
         QtHapWriter::create(output, video_config).context("failed to create output file")?;
 
     // Spawn ffmpeg to decode input to raw RGBA frames on stdout
-    let mut ffmpeg = Command::new(find_ffmpeg())
-        .args([
-            "-y",
-            "-i",
-        ])
-        .arg(input)
+    let mut ffmpeg_cmd = Command::new(find_ffmpeg());
+    ffmpeg_cmd.args(["-y", "-i"]).arg(input);
+    if (width, height) != (info.width, info.height) {
+        // Lanczos: this is a downscale that will be looked at on a big screen,
+        // and it happens once at encode time rather than every frame at
+        // showtime, so spend the quality here.
+        ffmpeg_cmd.args(["-vf", &format!("scale={width}:{height}:flags=lanczos")]);
+    }
+    let mut ffmpeg = ffmpeg_cmd
         .args([
             "-f", "rawvideo",
             "-pix_fmt", "rgba",
@@ -212,9 +229,7 @@ pub fn spawn_encode(
     input: std::path::PathBuf,
     output: std::path::PathBuf,
     info: FileInfo,
-    codec: HapCodec,
-    quality: Quality,
-    gpu_mode: GpuMode,
+    settings: EncodeSettings,
     gpu: Option<Arc<GpuResources>>,
 ) -> mpsc::Receiver<EncodeProgress> {
     let (tx, rx) = mpsc::channel();
@@ -226,9 +241,7 @@ pub fn spawn_encode(
             &input,
             &output,
             &info,
-            codec,
-            quality,
-            gpu_mode,
+            settings,
             gpu.as_deref(),
             &tx,
         ) {
@@ -249,4 +262,82 @@ pub fn spawn_encode(
     });
 
     rx
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::job::{HapCodec, Quality, Scale};
+
+    /// The scale option has to survive the whole pipeline — ffmpeg's filter, the
+    /// frame buffer size, the encoder and the QuickTime header all have to agree
+    /// on the output dimensions, and a mismatch shows up as a torn image rather
+    /// than an error. So encode a real file and read the size back.
+    #[test]
+    fn encodes_at_the_requested_size() {
+        let dir = std::env::temp_dir().join("hap_convert_scale_test");
+        let _ = std::fs::create_dir_all(&dir);
+        let input = dir.join("src.mp4");
+
+        // Skip rather than fail where ffmpeg is absent; it is a runtime
+        // dependency of the converter, not of the build.
+        let made_input = Command::new(find_ffmpeg())
+            .args([
+                "-y", "-f", "lavfi",
+                "-i", "testsrc=size=3840x2160:rate=25:duration=1",
+                "-pix_fmt", "yuv420p", "-v", "quiet",
+            ])
+            .arg(&input)
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        if !made_input {
+            eprintln!("ffmpeg unavailable — skipping");
+            return;
+        }
+
+        let info = FileInfo {
+            width: 3840,
+            height: 2160,
+            fps: 25.0,
+            frame_count: 25,
+            duration_secs: 1.0,
+        };
+        let gpu = GpuResources::try_new();
+
+        for (scale, expected) in [
+            (Scale::Original, (3840, 2160)),
+            (Scale::Hd1080, (1920, 1080)),
+            (Scale::Hd720, (1280, 720)),
+        ] {
+            let output = dir.join(format!("out_{}.mov", scale.label()));
+            let (tx, rx) = mpsc::channel();
+            encode_file(
+                &input,
+                &output,
+                &info,
+                EncodeSettings {
+                    codec: HapCodec::Hap1,
+                    quality: Quality::Fast,
+                    scale,
+                    gpu_mode: GpuMode::Auto,
+                },
+                gpu.as_ref(),
+                &tx,
+            )
+            .unwrap_or_else(|e| panic!("{} encode failed: {e}", scale.label()));
+            drop(rx);
+
+            let reader = hap_qt::QtReader::open(&output)
+                .unwrap_or_else(|e| panic!("{} output unreadable: {e:?}", scale.label()));
+            assert_eq!(
+                reader.resolution(),
+                expected,
+                "{} produced the wrong size",
+                scale.label()
+            );
+            assert!(reader.frame_count() > 0, "{} made no frames", scale.label());
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

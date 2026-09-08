@@ -1,5 +1,5 @@
 use crate::encode::{self, EncodeProgress, GpuResources};
-use crate::job::{ConvertJob, GpuMode, HapCodec, JobQueue, JobStatus, Quality};
+use crate::job::{ConvertJob, EncodeSettings, GpuMode, HapCodec, JobQueue, JobStatus, Quality, Scale};
 use crate::probe;
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc, Arc};
@@ -14,6 +14,7 @@ pub struct HapConvertApp {
     gpu_mode: GpuMode,
     /// Global quality preset.
     quality: Quality,
+    scale: Scale,
     /// Custom output directory (None = same as input).
     output_dir: Option<PathBuf>,
     /// Shared GPU resources.
@@ -35,6 +36,7 @@ impl HapConvertApp {
             codec: HapCodec::Hap1,
             gpu_mode: GpuMode::Auto,
             quality: Quality::default(),
+            scale: Scale::default(),
             output_dir: None,
             gpu: None,
             encoding_active: false,
@@ -113,9 +115,12 @@ impl HapConvertApp {
                 job.input_path.clone(),
                 job.output_path.clone(),
                 info,
-                job.codec,
-                self.quality,
-                self.gpu_mode,
+                EncodeSettings {
+                    codec: job.codec,
+                    quality: self.quality,
+                    scale: self.scale,
+                    gpu_mode: self.gpu_mode,
+                },
                 self.gpu.clone(),
             );
 
@@ -226,6 +231,22 @@ impl eframe::App for HapConvertApp {
                             ui.selectable_value(&mut self.quality, *q, q.label());
                         }
                     });
+
+                ui.separator();
+
+                ui.label("Size:");
+                egui::ComboBox::from_id_salt("scale_select")
+                    .selected_text(self.scale.label())
+                    .show_ui(ui, |ui| {
+                        for sc in Scale::ALL {
+                            ui.selectable_value(&mut self.scale, *sc, sc.label());
+                        }
+                    })
+                    .response
+                    .on_hover_text(
+                        "Playback cost is per pixel. A 4K clip on a 1080p output \
+                         decodes four times the bytes for no visible gain.",
+                    );
 
                 ui.separator();
 
