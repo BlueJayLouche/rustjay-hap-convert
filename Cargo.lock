@@ -1078,6 +1078,8 @@ dependencies = [
 [[package]]
 name = "hap-parser"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c1423b8ada98acdaced416e3d5cec5c515a9a05b2cd67c3d278328cb2f994e8"
 dependencies = [
  "snap",
  "thiserror 2.0.20",
@@ -1085,7 +1087,9 @@ dependencies = [
 
 [[package]]
 name = "hap-qt"
-version = "0.3.0"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e26109de16cbe82d788afe32b2e8a50571f7f3abffd3d7178e6574d821da6061"
 dependencies = [
  "byteorder",
  "hap-parser",
@@ -1097,7 +1101,9 @@ dependencies = [
 
 [[package]]
 name = "hap-wgpu"
-version = "0.3.0"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84c6999292cd60d648677184ec65b3b9a7c27aa4bd58c2ca580df4572f13d49f"
 dependencies = [
  "bytemuck",
  "hap-parser",
